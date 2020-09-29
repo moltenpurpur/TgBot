@@ -1,0 +1,5 @@
+.idea
+src/main/resources
+target
+pom.xml
+TelegramBot.iml
