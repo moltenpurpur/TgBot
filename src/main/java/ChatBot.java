@@ -11,7 +11,7 @@ public class ChatBot {
 
     public String reply(String message) {
         switch (message){
-            case "/help":
+            case "/helpp":
                 return getHelp();
             case "Скажи счет":
                 return getScore();
