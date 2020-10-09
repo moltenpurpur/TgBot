@@ -1,5 +1,2 @@
 .idea
-src/main/resources
-target
-pom.xml
-TelegramBot.iml
+.src/main/resources

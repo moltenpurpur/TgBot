@@ -1,65 +1,46 @@
+import java.util.ArrayList;
+
 public class ChatBot {
 
-    public Question lastQuestion;
-    private int rightCount;
-    private int wrongCount;
+    private Activity activity;
+    private TestSelector testSelector;
 
-    ChatBot() {
-        rightCount = 0;
-        wrongCount = 0;
-    }
 
-    public String reply(String message) {
-        switch (message){
+    public BotAnswer reply(String message) throws Exception {
+
+        switch (message) {
             case "/help":
                 return getHelp();
-            case "Скажи счет":
-                return getScore();
-            case "Дай примеры":
-                return getQuestionLine();
-            case "Хватит примеров":
-                return stopQuestions();
+            case "/stop":
+                activity = null;
+                return new BotAnswer("Хорошо");
+            case "/getTest":
+                throw new Exception("sff");
+                //testSelector = new TestSelector();
+                //return new BotAnswer(testSelector.getTests());
             default:
-                if( Utils.isNumeric(message)&& lastQuestion!=null)
-                    return CheckAnswer(message);
-                else
-                    return "Я не знаю такой команды :с\nПопробуй почитать /help";
-
+                if (testSelector != null && testSelector.tests.containsKey(message)) {
+                    activity = testSelector.select(message);
+                    testSelector = null;
+                    if (activity == null)
+                        return new BotAnswer("Тест не найден");
+                    return activity.reply("");
+                }
+                if (activity != null && activity.getCommands().contains(message)) {
+                    var w = activity.reply(message);
+                    if (w.isLastMessage)
+                        activity = null;
+                    return w;
+                } else
+                    return new BotAnswer("Я не знаю такой команды :с\nПопробуй почитать /help", true);
         }
     }
 
-    private String CheckAnswer(String answer){
-        if(answer.equals(lastQuestion.rightAnswer)) {
-            lastQuestion=QuestionGenerator.GetQuestion();
-            rightCount++;
-            return "И это правильный ответ!\nВот тебе ещё 1 пример\n"+getQuestionLine();
-        }
-        else {
-            wrongCount++;
-            return "К сожалению ты ошибся, попробуй снова";
-        }
-    }
 
-    public static String getHelp() {
-        return "Это бот который может задавать вопросы\n" +
-                "Чтоб попросить у него арифметический пример напиши \"Дай примеры\"\n"+
-                "\"/help\" - чтоб попросить помощь\n \"Скажи счет\" - чтоб узнать счёт \n " +
-                "\"Хватит примеров\" - чтоб закончить";
-    }
-
-    private String stopQuestions()
-    {
-        lastQuestion=null;
-        return "Хорошо";
-    }
-
-    private String getQuestionLine() {
-        lastQuestion = QuestionGenerator.GetQuestion();
-        return lastQuestion.question + "=?";
-    }
-
-    private String getScore(){
-        return "Количество правильных: "+rightCount+
-                "\nКоличество не правильных: "+wrongCount;
+    public static BotAnswer getHelp() {
+        var helpMessage ="/getTest";
+        var commands = new ArrayList<String>();
+        commands.add("/getTest");
+        return new BotAnswer(helpMessage,commands);
     }
 }
