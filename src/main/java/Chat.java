@@ -3,25 +3,28 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class Chat extends TelegramLongPollingBot {
 
-    private final static String tokenInFile = "src\\main\\resources\\token.txt";
     private static String token;
     private static String name;
+    private static Loger loger;
     private final Map<Long, ChatBot> users = new HashMap<>();
+    private ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
 
     public static void main(String[] args) throws Exception {
 
-        var reader = new BufferedReader(new FileReader(tokenInFile));
-        token = reader.readLine();
-        name = reader.readLine();
+        var env = System.getenv();
+        token = env.get("tgToken");
+        name = env.get("tgName");
+
+        loger=new Loger("src\\main\\resources\\log");
 
         ApiContextInitializer.init();
         var telegramBotsApi = new TelegramBotsApi();
@@ -33,17 +36,42 @@ public class Chat extends TelegramLongPollingBot {
         try {
             var message = update.getMessage();
             if (message != null && message.hasText()) {
-                var messageId = message.getChatId();
+                var chatId = message.getChatId();
+                var sendMessage = new SendMessage();
 
+                sendMessage.setChatId(chatId);
                 if (message.getText().equals("/start")) {
-                    execute(new SendMessage(messageId, ChatBot.getHelp()));
-                    users.put(messageId, new ChatBot());
-                } else
-                    execute(new SendMessage(messageId, users.get(messageId).reply(message.getText())));
+                    var locker = new ReentrantLock();
+
+                    var help = ChatBot.getHelp();
+
+                    sendMessage.setText(help.message);
+
+                    replyKeyboardMarkup.setKeyboard(TgButtons.createButtons(help.possibleAnswers));
+                    while (true) {
+                        if (locker.tryLock()) {
+                            users.put(chatId, new ChatBot());
+                            break;
+                        }
+                    }
+                    locker.unlock();
+                } else {
+                    var reply = users.get(chatId).reply(message.getText());
+                    if (reply.possibleAnswers != null)
+                        replyKeyboardMarkup.setKeyboard(TgButtons.createButtons(reply.possibleAnswers));
+                    sendMessage.setText(reply.message);
+                }
+                replyKeyboardMarkup.setOneTimeKeyboard(true);
+                replyKeyboardMarkup.setResizeKeyboard(true);
+                sendMessage.setReplyMarkup(replyKeyboardMarkup);
+
+                replyKeyboardMarkup = new ReplyKeyboardMarkup();
+                execute(sendMessage);
 
             }
         } catch (Exception e) {
-            
+            System.out.println(e.toString());
+            loger.Add(e);
         }
     }
 
