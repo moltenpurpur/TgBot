@@ -1,5 +1,5 @@
 .idea
 src/main/resources
-target
+/target
 pom.xml
 TelegramBot.iml
